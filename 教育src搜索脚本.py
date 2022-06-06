@@ -35,7 +35,7 @@ def is_empty(file):  # 判断文件是否为空
 def get_numEnd(choice, province_id=None):   # 获取对应列表页数
     print('%s正在处理中，请稍等...%s'%(blue, end))
     if choice == 1:
-        url = 'https://src.sjtu.edu.cn/user/sum/'
+        url = 'https://src.sjtu.edu.cn/user/rank/'
         res = requests.get(url=url, headers=headers)
         data_html = etree.HTML(res.text)
         numEnd = data_html.xpath('//*[@id="show_list"]/ul/li[9]/a/text()')[0]

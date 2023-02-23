@@ -23,7 +23,7 @@ def is_empty(file):  # 判断文件是否为空
                     with open(file, "r+") as f:
                         f.seek(0)
                         f.truncate()  # 清空文件
-                    print("%s已删除文件内数据%s" % (red, end))
+                    print("%s已删除原文件内数据%s" % (red, end))
                     break
                 elif result == "n":
                     print("%s内容将在文件后追加！%s"% (red, end))
@@ -32,15 +32,15 @@ def is_empty(file):  # 判断文件是否为空
                     print("%s请重新输入%s\n" % (yellow, end))
 
 
-def get_numEnd(choice, province_id=None):   # 获取对应列表页数
+def get_numEnd(choice, province_id=0):   # 获取对应列表页数，province_id默认为0
     print('%s正在处理中，请稍等...%s'%(blue, end))
     if choice == 1:
-        url = 'https://src.sjtu.edu.cn/user/rank/'
-        res = requests.get(url=url, headers=headers)
+        res = requests.get(url=userUrl, headers=headers)
         data_html = etree.HTML(res.text)
         numEnd = data_html.xpath('//*[@id="show_list"]/ul/li[9]/a/text()')[0]
+
     elif choice == 3:
-        url = 'https://src.sjtu.edu.cn/rank/firm/?province=' + str(province_id)
+        url = countryUrl + "/" + str(province_id)
         res = requests.get(url=url, headers=headers)
         data_html = etree.HTML(res.text)
         numEnd = data_html.xpath('/html/body/div/div/div[1]/div/div/ul/li[last()-1]/a/text()')
@@ -56,21 +56,22 @@ def Exact_search(numEnd):     # 精确查找用户
         name = input("%s【精确查询】%s >> 将查找的用户名："%(yellow, end))
         if name != "":
             break
-    url = baseUrl + '/user/sum/?page='
     print("%s将查询页数总共：%s %s" % (blue, numEnd, end))
     time.sleep(0.5)
     flag = False
     for i in tqdm(range(numStart, numEnd + 1)):
-        Surl = url + str(i)
+        Surl = userUrl + str(i)
         res = requests.get(url=Surl, headers=headers)
         data_html = etree.HTML(res.text)
-        name_list = data_html.xpath('//div[@id="show_list"]/table/tr[@class="row"]/td[2]/a/text()')
+        name_list = data_html.xpath('/html/body/div[1]/div/div[1]/div/div[@id="show_list"]/table/tr[*]/td[2]/a/text()')
+        url_list = data_html.xpath('//*[@id="show_list"]/table/tr[@class="row"]/td[2]/a/@href')
         level_list = data_html.xpath('//*[@id="show_list"]/table/tr[@class="row"]/td[3]/span/text()')
         rank_list = data_html.xpath('//*[@id="show_list"]/table/tr[@class="row"]/td[1]/text()')
         for j in range(len(name_list)):
             list_name = str(name_list[j]).strip()      # 去前后空格
             if name == list_name:
-                print("\n%s【+】目标在第 %s 页：%s\t称号：%s\t排名：%s%s\n" % (green, i, name_list[j], level_list[j], rank_list[j], end))
+                print("\n%s【+】目标在第 %s 页：%s\t称号：%s\t排名：%s%s" % (green, i, name_list[j], level_list[j], rank_list[j], end))
+                print("%s【+】目标个人主页url：%s%s\n" % (green, baseUrl + str(url_list[j]), end))
                 flag = True
                 break
         if flag:
@@ -87,16 +88,15 @@ def Fuzzy_search(file, numEnd):     # 模糊查找用户
     except:
         pass
     is_ignoreCase = input('是否忽略字母大小写(默认)y/n？').lower()
-    url = baseUrl + '/user/sum/?page='
     print("%s将查询页数总共：%s \n"
           "正在搜索，请耐心等候(查找到的相似用户名会在文件%s内详细显示)...%s" % (blue, numEnd, file, end))
     userNum = 0     # 人数记数（顺便的）
     count = 0       # 查找到的类似用户数
     for i in range(numStart, numEnd + 1):
-        Surl = url + str(i)
+        Surl = userUrl + str(i)
         res_data = requests.get(url=Surl, headers=headers)
         data_html = etree.HTML(res_data.text)
-        name_list = data_html.xpath('//div[@id="show_list"]/table/tr[@class="row"]/td[2]/a/text()')
+        name_list = data_html.xpath('//*[@id="show_list"]/table/tr[@class="row"]/td[2]/a/text()')
         level_list = data_html.xpath('//*[@id="show_list"]/table/tr[@class="row"]/td[3]/span/text()')
         rank_list = data_html.xpath('//*[@id="show_list"]/table/tr[@class="row"]/td[1]/text()')
         rankNum = 0  # 记数
@@ -123,13 +123,12 @@ def Fuzzy_search(file, numEnd):     # 模糊查找用户
 
 def gift_search(file):      # 查询未下架礼品
     is_empty(file)      # 判断文件内是否为空、有数据
-    url = baseUrl + '/gift/'
     count = 0               # 未下架数量
     buyNum = 0              # 可买数量
     print("%s预计礼品数（可设）：%s \n"
           "正在搜索，请耐心等候(查询到的礼品会在文件%s内详细显示)...%s" % (blue, expectedGiftNum, file, end))
     for i in tqdm(range(expectedGiftNum)):
-        gift_url = url + str(i)
+        gift_url = giftUrl + str(i)
         res = requests.get(url=gift_url, headers=headers)
         html = etree.HTML(res.text)
         if "Not Found" not in res.text:
@@ -145,23 +144,22 @@ def gift_search(file):      # 查询未下架礼品
     print("\n%s共有：%s 个未下架， 其中 %s 个可买，%s 个已无库存%s\n" % (yellow, count, buyNum, count - buyNum, end))
 
 
-# 全国查找(已弃用)
-def country_schoolFind(numEnd):        # 全国查找(已弃用)
-    url = baseUrl + '/rank/firm/?page='
+# 全国查找 (已弃用)
+def country_schoolFind(numEnd):
     flag = False
     try:
         while True:
-            college_name = input("将查找的高校名：")
+            college_name = input("%s【全国查找】%s >> 将查找的高校名："%(yellow, end))
             if college_name != "":
                 break
     except:
         pass
     print("%s【*】共 %s 页，请耐心等候，确保输入的高校名无误！%s" % (blue, numEnd, end))
     for i in tqdm(range(numStart, numEnd+1)):
-        search_url = url + str(i)
+        search_url = countryUrl + "/0/?page=" + str(i)
         try:
-            ress = requests.get(url=search_url, headers=headers)
-            data_html = etree.HTML(ress.text)
+            res = requests.get(url=search_url, headers=headers)
+            data_html = etree.HTML(res.text)
             schoolNameList = data_html.xpath('/html/body/div/div/div[1]/div/div/table/tr[*]/td[2]/a/text()')
             bugNumList = data_html.xpath('/html/body/div/div/div[1]/div/div/table/tr[@class="row"]/td[3]/text()')
             bugThreatList = data_html.xpath('/html/body/div/div/div[1]/div/div/table/tr[@class="row"]/td[4]/text()')
@@ -169,8 +167,9 @@ def country_schoolFind(numEnd):        # 全国查找(已弃用)
             for j in range(len(schoolNameList)):
                 schoolName = schoolNameList[j].strip()  # 去前后空格
                 if schoolName == college_name:
-                    print('%s【+】目标在第 %s 页, 第 %s 个，id为%s，漏洞总数为%s，漏洞威胁值为%s%s\n'
+                    print('\n%s【+】目标在第 %s 页, 第 %s 个，id为%s，漏洞总数为%s，漏洞威胁值为%s%s'
                           %(green, i, j+1, (i-1)*15+(j+1), bugNumList[j], bugThreatList[j], end))
+                    print('%s【+】目标页url:  %s%s\n'%(green, search_url, end))
                     flag = True
                     break
             if flag:
@@ -182,8 +181,8 @@ def country_schoolFind(numEnd):        # 全国查找(已弃用)
 
 
 def collegeFind(choice):      # 各区域/省份查找
-    url = baseUrl + '/rank/firm/'
     print('%s正在获取各区域/省份信息....%s'%(blue, end))
+    url = countryUrl + "/0"
     res = requests.get(url=url, headers=headers)
     data_html = etree.HTML(res.text)
     provinceList = data_html.xpath('//*[@id="id_province"]/option/text()')
@@ -193,18 +192,19 @@ def collegeFind(choice):      # 各区域/省份查找
             print('')
     try:
         while True:
-            province_id = int(input('请输入高校所在区域/省份对应编号：'))
+            province_id = int(input('\n%s【各省份查找】%s >> 请输入高校所在区域/省份对应编号：'%(yellow, end)))
             if province_id < 0 or province_id >= len(provinceList):
                 print('%s输入超出限制！%s'%(red, end))
             else:
                 break
     except:
         pass
-    print("\n%s【%s】 >>%s 将查找的高校名："%(green, provinceList[province_id], end), end="")
+    print("\n%s【%s】 %s>> 将查找的高校名：" % (green, provinceList[province_id], end), end="")
     college_name = input('')
     numEnd = get_numEnd(choice, province_id)
+    print("%s【*】共 %s 页，请耐心等候，确保输入的高校名无误！%s" % (blue, numEnd, end))
     for i in tqdm(range(numStart, numEnd+1)):
-        search_url = url + '?province=%s&page=%s' % (province_id, i)
+        search_url = countryUrl + '/%s/?page=%s' % (province_id, i)
         try:
             flag = False
             ress = requests.get(url=search_url, headers=headers)
@@ -216,8 +216,9 @@ def collegeFind(choice):      # 各区域/省份查找
             for j in range(len(schoolNameList)):
                 schoolName = schoolNameList[j].strip()  # 去前后空格
                 if schoolName == college_name:
-                    print('%s【+】目标【%s】在【%s】列表中第 %s 页, 第 %s 个，id为%s，漏洞总数为%s，漏洞威胁值为%s%s\n'
+                    print('\n%s【+】目标【%s】在【%s】列表中第 %s 页, 第 %s 个，id为 %s，漏洞总数为 %s，漏洞威胁值为 %s%s'
                         % (green, college_name, provinceList[province_id], i, j+1, (i-1)*15+(j+1), bugNumList[j], bugThreatList[j], end))
+                    print('%s【+】目标页url:  %s%s\n' % (green, search_url, end))
                     flag = True
                     break
             if flag:
@@ -229,7 +230,7 @@ def collegeFind(choice):      # 各区域/省份查找
 
 
 if __name__ == '__main__':
-    global baseUrl, headers
+    global headers, baseUrl, countryUrl, everyProvinceUrl, giftUrl, userUrl
     global numStart, expectedGiftNum
     global red, green, yellow, blue, end
     red = '\033[1m\033[31m'
@@ -245,11 +246,16 @@ if __name__ == '__main__':
 
     searchFile = 'search.txt'               # 查找用户名结果
     giftFile = 'gift.txt'                   # 查找礼品结果
-    baseUrl = 'https://src.sjtu.edu.cn'     # 教育src网址
     numStart = 1                            # 用户列表起始页
-    expectedGiftNum = 150                   # 预计有多少个礼品（可设）
+    expectedGiftNum = 300                   # 预计有多少个礼品（可设）
 
-    print('\neduSrc平台脚本（小型搜索脚本） —— by Ztop')
+    baseUrl = 'https://src.sjtu.edu.cn'                             # 教育src网址
+    countryUrl = "https://src.sjtu.edu.cn/rank/firm"                # 全国高校漏洞排行榜url
+    giftUrl = "https://src.sjtu.edu.cn/gift/?page="                 # 礼品兑换url
+    userUrl = "https://src.sjtu.edu.cn/user/rank/sum/2017/1/?page=" # 用户排行榜url
+
+
+    print('\033[1m\033[35meduSrc平台脚本（小型搜索脚本）v1.1 —— by Ztop\033[0m')
 
     while True:
         print('\033[1m\033[35m------------功能描述---------------\n'
@@ -272,10 +278,10 @@ if __name__ == '__main__':
         elif choice == 2:  # 未下架礼品搜索
             gift_search(giftFile)
         elif choice == 3:  # 省份高校的查找
-            # print('全国查找(slower)——1 / 各省份查找(faster)——2')
+            # print('全国查找1 | 各省份查找2')
             # inter_choice = int(input('>>'))
             # if inter_choice == 1:        # 全国查找
-            #     numEnd = get_numEnd(choice)
+            #     numEnd = get_numEnd(choice)      # 0表示全国
             #     country_schoolFind(numEnd)
             # elif inter_choice == 2:      # 各省份查找
             #     collegeFind(choice)
